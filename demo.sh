@@ -5,6 +5,7 @@
 #   ./demo.sh destroy     delete every AWS resource (LiveQuiz-Destroy pipeline)
 #   ./demo.sh status      Jenkins, last builds, live URL, AWS resources
 #   ./demo.sh url         print the live URL and the host (admin) password for the app
+#   ./demo.sh logs [app|access|events|jenkins] [minutes]   show logs (default: all, last 30 min)
 #   ./demo.sh stop        stop Jenkins (AWS is NOT touched – run destroy first)
 set -uo pipefail
 BASE="$(cd "$(dirname "$0")" && pwd)"
@@ -80,6 +81,15 @@ case "${1:-}" in
     say "AWS (ap-south-1, tag Project=LiveQuiz)"
     aws ec2 describe-instances --filters Name=tag:Project,Values=LiveQuiz Name=instance-state-name,Values=pending,running,stopping,stopped \
       --query 'Reservations[].Instances[].[InstanceId,InstanceType,State.Name,PublicIpAddress]' --output table 2>&1 | head -12 ;;
+  logs)   # where: app (CloudWatch, everything) | access (CloudWatch HTTP requests) | events (CloudWatch logins/games) | jenkins (Jenkins access log)
+    what=${2:-all}; mins=${3:-30}
+    if [ "$what" = all ] || [ "$what" = access ]; then say "App access log – every HTTP request (AWS CloudWatch /livequiz/app, last ${mins} min)"
+      aws logs tail /livequiz/app --since "${mins}m" --format short --filter-pattern '"HTTP/1.1"' | tail -25; fi
+    if [ "$what" = all ] || [ "$what" = events ]; then say "App events – logins, games, players (AWS CloudWatch)"
+      aws logs tail /livequiz/app --since "${mins}m" --format short --filter-pattern '"[livequiz]"' | tail -25; fi
+    if [ "$what" = app ]; then say "App – all container output (AWS CloudWatch)"; aws logs tail /livequiz/app --since "${mins}m" --format short | tail -40; fi
+    if [ "$what" = all ] || [ "$what" = jenkins ]; then say "Jenkins access log – every request to Jenkins (/var/jenkins_home/logs/access.log)"
+      docker exec lq-jenkins tail -n 20 /var/jenkins_home/logs/access.log 2>/dev/null || echo "  (no access log yet)"; fi ;;
   stop) docker stop lq-jenkins >/dev/null && ok "Jenkins stopped (AWS untouched)" ;;
   *) sed -n '2,8p' "$0"; exit 1 ;;
 esac

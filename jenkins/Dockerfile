@@ -25,5 +25,7 @@ USER jenkins
 COPY --chown=jenkins:jenkins plugins.txt /usr/share/jenkins/ref/plugins.txt
 RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
 COPY --chown=jenkins:jenkins casc.yaml jobs.groovy /var/jenkins_conf/
+# JENKINS_OPTS: web access log - every request to Jenkins (IP, user, page, status) -> /var/jenkins_home/logs/access.log
 ENV CASC_JENKINS_CONFIG=/var/jenkins_conf/casc.yaml \
-    JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
+    JAVA_OPTS="-Djenkins.install.runSetupWizard=false" \
+    JENKINS_OPTS="--accessLoggerClassName=winstone.accesslog.SimpleAccessLogger --simpleAccessLogger.format=combined --simpleAccessLogger.file=/var/jenkins_home/logs/access.log"

@@ -12,6 +12,8 @@ ARG GIT_COMMIT=local
 ENV APP_VERSION=${APP_VERSION} BUILD_NUMBER=${BUILD_NUMBER} GIT_COMMIT=${GIT_COMMIT} PYTHONUNBUFFERED=1 HOME=/tmp
 USER 10001
 EXPOSE 8000
-HEALTHCHECK --interval=15s --timeout=3s CMD ["python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+HEALTHCHECK --interval=60s --timeout=3s CMD ["python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
 # one worker keeps all live games in one process; threads serve the WebSocket connections
-CMD ["gunicorn", "--worker-class", "gthread", "--workers", "1", "--threads", "200", "--bind", "0.0.0.0:8000", "app:app"]
+# --access-logfile -  : one line per HTTP request (client IP, request, status, size, time) -> CloudWatch
+CMD ["gunicorn", "--worker-class", "gthread", "--workers", "1", "--threads", "200", "--bind", "0.0.0.0:8000", \
+     "--access-logfile", "-", "--access-logformat", "%(h)s \"%(r)s\" %(s)s %(b)sB %(M)sms \"%(a)s\"", "app:app"]

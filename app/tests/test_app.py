@@ -62,6 +62,12 @@ def test_wrong_password_and_csrf(client):
     assert client.post("/login", data={"username": "admin", "password": "x"}).status_code == 400   # no CSRF token
 
 
+def test_fresh_visitor_cannot_post_without_token():
+    fresh = app.test_client()          # never loaded a page, so no session token exists
+    assert fresh.post("/login", data={"username": "admin", "password": "test-admin-pass"}).status_code == 400
+    assert fresh.post("/login", data={"username": "admin", "password": "test-admin-pass", "csrf": ""}).status_code == 400
+
+
 def test_register_and_create_quiz(client):
     t = csrf(client)
     client.post("/register", data={"username": "teacher1", "password": "secret-pass-1", "csrf": t})

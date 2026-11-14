@@ -2,6 +2,7 @@
 Major Project: AWS + Git + Jenkins + Terraform + Ansible + Docker (one-click deployment).
 """
 import io
+import logging
 import os
 import secrets
 import socket
@@ -33,6 +34,15 @@ db.init_app(app)
 socketio = SocketIO(app, async_mode="threading", cors_allowed_origins=None)
 games = GameRegistry()
 
+# Application event log -> stdout -> Docker awslogs driver -> CloudWatch Logs (/livequiz/app)
+logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [livequiz] %(message)s")
+log = logging.getLogger("livequiz")
+
+
+def client_ip():
+    return request.headers.get("X-Forwarded-For", request.remote_addr)
+
+
 DEMO_QUIZ = ("DevOps & Cloud Challenge", "How well do you know the tools behind this very deployment?", [
     ("Which tool provisioned the AWS infrastructure running this quiz?", ["Ansible", "Terraform", "Jenkins", "Docker"], 1),
     ("Which AWS service hosts this application server?", ["S3", "Lambda", "EC2", "RDS"], 2),
@@ -58,7 +68,8 @@ def load_user():
     uid = session.get("uid")
     g.user = db.session.get(User, uid) if uid else None
     if request.method == "POST" and not request.path.startswith("/socket.io"):
-        if request.form.get("csrf") != session.get("csrf"):
+        token = request.form.get("csrf")
+        if not token or not session.get("csrf") or not secrets.compare_digest(token, session["csrf"]):
             abort(400, "invalid form token")
 
 
@@ -124,7 +135,9 @@ def login():
         if u and u.check_password(request.form.get("password", "")):
             session.clear()
             session["uid"] = u.id
+            log.info("LOGIN ok user=%s ip=%s", u.username, client_ip())
             return redirect(request.args.get("next") or url_for("dashboard"))
+        log.warning("LOGIN failed user=%s ip=%s", request.form.get("username", "")[:40], client_ip())
         flash("Wrong username or password")
     return render_template("login.html", mode="login")
 
@@ -145,6 +158,7 @@ def register():
             db.session.commit()
             session.clear()
             session["uid"] = u.id
+            log.info("REGISTER new host user=%s ip=%s", u.username, client_ip())
             return redirect(url_for("dashboard"))
     return render_template("login.html", mode="register")
 
@@ -184,6 +198,7 @@ def quiz_new():
             flash("Give the quiz a title and at least one complete question (2-4 options, correct answer marked)")
             return render_template("quiz_new.html")
         quiz = Quiz(title=title, description=request.form.get("description", "")[:300], owner=g.user, questions=questions)
+        log.info("QUIZ created title=%r questions=%d by=%s", title, len(questions), g.user.username)
         db.session.add(quiz)
         db.session.commit()
         flash(f"Quiz \"{title}\" saved with {len(questions)} questions")
@@ -206,6 +221,7 @@ def host(qid):
     quiz = Quiz.query.filter_by(id=qid, owner_id=g.user.id).first_or_404()
     qs = [{"text": q.text, "options": q.options, "correct": q.correct, "time_limit": q.time_limit} for q in quiz.questions]
     game = games.create(quiz.id, quiz.title, qs, g.user.id)
+    log.info("GAME opened pin=%s quiz=%r host=%s", game.pin, quiz.title, g.user.username)
     return redirect(url_for("host_game", pin=game.pin))
 
 
@@ -265,6 +281,7 @@ def on_join(data):
     if err:
         return {"ok": False, "error": err}
     join_room(game.pin)
+    log.info("PLAYER joined pin=%s name=%s players=%d ip=%s", game.pin, data.get("name", "")[:20], len(game.players), client_ip())
     emit("lobby", {"players": [p.name for p in game.players.values()]}, to=host_room(game.pin))
     return {"ok": True, "title": game.title, "state": game.state}
 
@@ -346,6 +363,8 @@ def on_skip(data):
 def finish(game):
     game.state = "finished"
     board = game.leaderboard()
+    log.info("GAME finished pin=%s players=%d winner=%s score=%s", game.pin, len(board),
+             board[0]["name"] if board else "-", board[0]["score"] if board else 0)
     with app.app_context():
         row = db.session.get(Game, game.db_game_id) if game.db_game_id else None
         if row:
