@@ -1,0 +1,35 @@
+{% extends "base.html" %}{% block title %}Hosting {{ game.title }}{% endblock %}{% block body %}
+<div id="lobby" class="card"><div class="hero" style="grid-template-columns:1fr auto"><div>
+<span class="badge">LIVE GAME</span><h1>{{ game.title }}</h1><p class="lead">Join at <b>{{ join_url.split('/play')[0] }}</b> with PIN</p>
+<div class="bigpin">{{ game.pin }}</div><p class="muted"><span id="pcount">0</span> players joined</p>
+<button class="btn" id="startBtn" onclick="next()">Start game ▶</button></div><div class="qr center">{{ qr|safe }}<div class="muted">Scan to join</div></div></div>
+<div class="players" id="players"></div></div>
+<div id="question" class="card" style="display:none"><div class="row" style="justify-content:space-between"><span class="badge" id="qnum"></span><div class="timer" id="timer"></div></div>
+<div class="qtext" id="qtext"></div><div class="opts" id="opts"></div>
+<div class="row" style="justify-content:space-between;margin-top:16px"><span class="muted"><b id="answered">0</b> answered</span><button class="btn ghost small" onclick="skip()">Reveal now</button></div></div>
+<div id="reveal" class="card" style="display:none"><h2 id="rtitle"></h2><div id="bars"></div><h3>Leaderboard</h3><ol class="lb" id="lb" style="padding:0;list-style:none"></ol>
+<button class="btn" id="nextBtn" onclick="next()">Next question ▶</button></div>
+<div id="final" class="card center" style="display:none"><h1>🏆 Final results</h1><div class="podium" id="podium"></div><ol class="lb" id="flb" style="padding:0;list-style:none;text-align:left"></ol>
+<a class="btn ghost" id="report">Open game report</a> <a class="btn" href="{{ url_for('dashboard') }}">Back to dashboard</a></div>
+{% endblock %}{% block scripts %}<script src="{{ url_for('static', filename='socket.io.min.js') }}"></script><script>
+const PIN="{{ game.pin }}",s=io(),$=id=>document.getElementById(id);let tick,cur;
+const show=id=>['lobby','question','reveal','final'].forEach(x=>$(x).style.display=x==id?'':'none');
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function renderPlayers(list){$('pcount').textContent=list.length;$('players').innerHTML=list.map(n=>`<span class="chip">${esc(n)}</span>`).join('')}
+s.on('connect',()=>s.emit('host_join',{pin:PIN},r=>{if(r&&r.ok)renderPlayers(r.players)}));
+s.on('lobby',d=>renderPlayers(d.players));
+function next(){s.emit('next',{pin:PIN})}function skip(){s.emit('skip',{pin:PIN})}
+s.on('question',q=>{cur=q;show('question');$('qnum').textContent=`Question ${q.index+1} of ${q.total}`;$('qtext').textContent=q.text;$('answered').textContent=q.answered||0;
+ $('opts').innerHTML=q.options.map((o,i)=>`<div class="opt o${i}"><span class="tag">${'ABCD'[i]}</span>${esc(o)}</div>`).join('');
+ let t=q.time_limit;$('timer').textContent=t;clearInterval(tick);tick=setInterval(()=>{t--;$('timer').textContent=Math.max(t,0);if(t<=0)clearInterval(tick)},1000)});
+s.on('answered',d=>$('answered').textContent=`${d.answered} / ${d.players}`);
+s.on('reveal',r=>{clearInterval(tick);show('reveal');const tot=Math.max(1,r.distribution.reduce((a,b)=>a+b,0));
+ $('rtitle').innerHTML=`Correct answer: <span class="good">${'ABCD'[r.correct]} – ${esc(cur.options[r.correct])}</span>`;
+ $('bars').innerHTML=r.distribution.map((c,i)=>`<div class="bar o${i}" style="width:${10+90*c/tot}%">${'ABCD'[i]} · ${c} ${i==r.correct?'✔':''}</div>`).join('');
+ $('lb').innerHTML=r.leaderboard.slice(0,5).map(p=>`<li><span>${p.rank}. ${esc(p.name)}</span><span>${p.score} <small class="muted">+${p.last}</small></span></li>`).join('');
+ $('nextBtn').textContent=r.is_last?'Show final results 🏆':'Next question ▶'});
+s.on('finished',f=>{show('final');const cls=['p2','p1','p3'],order=[f.podium[1],f.podium[0],f.podium[2]];
+ $('podium').innerHTML=order.map((p,i)=>p?`<div class="${cls[i]}">${esc(p.name)}<br>${p.score}</div>`:'').join('');
+ $('flb').innerHTML=f.leaderboard.map(p=>`<li><span>${p.rank}. ${esc(p.name)}</span><span>${p.score} · ${p.correct} correct</span></li>`).join('');
+ if(f.report)$('report').href='/game/'+f.report});
+</script>{% endblock %}

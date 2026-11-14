@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+*.db
+.pytest_cache/
+app/test-results.xml
+infra/terraform/.terraform/
+infra/terraform/*.tfstate*
+infra/terraform/tfplan
+infra/terraform/.terraform.lock.hcl.bak
+infra/ansible/.generated/
+.secrets/
+docs/*.docx
+docs/*.pdf
+Screenshots/

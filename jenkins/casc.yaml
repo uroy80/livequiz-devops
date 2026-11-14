@@ -1,0 +1,25 @@
+# Jenkins Configuration as Code - LiveQuiz major project
+jenkins:
+  systemMessage: "LiveQuiz Major Project – one-click deployment to AWS (Git → Jenkins → Terraform → Ansible → Docker)"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          name: "LiveQuiz Team"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  markupFormatter: plainText
+security:
+  globalJobDslSecurityConfiguration:
+    useScriptSecurity: false
+unclassified:
+  location:
+    url: "http://localhost:8088/"
+  timestamper:
+    allPipelines: true
+jobs:
+  - file: /var/jenkins_conf/jobs.groovy

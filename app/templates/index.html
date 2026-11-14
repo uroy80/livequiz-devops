@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block body %}
+<div class="hero"><div class="card"><h1>Real-time quizzes for every classroom</h1>
+<p class="lead">Hosts build a quiz and start a game. Players join from any phone with a 6-digit PIN or QR code, answer live, and watch the leaderboard change after every question.</p>
+<div class="row" style="margin-top:18px">{% if user %}<a class="btn" href="{{ url_for('dashboard') }}">Go to my quizzes</a>{% else %}<a class="btn" href="{{ url_for('login') }}">Host a quiz</a><a class="btn ghost" href="{{ url_for('register') }}">Create host account</a>{% endif %}</div></div>
+<div class="card"><h2 style="margin-top:0">Join a game</h2><form action="{{ url_for('play') }}" method="get">
+<input class="pin-input" name="pin" inputmode="numeric" maxlength="6" placeholder="PIN" required><button class="btn alt" style="width:100%">Enter</button></form></div></div>
+<div class="stats"><div class="stat"><b>{{ stats.quizzes }}</b><span>quizzes</span></div><div class="stat"><b>{{ stats.games }}</b><span>games played</span></div>
+<div class="stat"><b>{{ stats.players }}</b><span>players</span></div><div class="stat"><b>{{ stats.live }}</b><span>live right now</span></div></div>
+{% endblock %}

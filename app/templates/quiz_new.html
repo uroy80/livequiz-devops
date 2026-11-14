@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block body %}<h1>New quiz</h1><form method="post" id="f"><input type="hidden" name="csrf" value="{{ csrf }}">
+<div class="card"><label>Title</label><input name="title" required maxlength="120"><label>Description</label><input name="description" maxlength="300"></div>
+<div id="qs"></div><div class="row"><button type="button" class="btn ghost" onclick="addQ()">+ Add question</button><button class="btn">Save quiz</button></div></form>{% endblock %}
+{% block scripts %}<script>
+let n=0;function addQ(){const i=n++;const d=document.createElement('div');d.className='card qblock';
+d.innerHTML=`<label>Question ${i+1}</label><input name="q_text" required maxlength="300"><div class="muted">Options (select the correct one)</div>`+
+[0,1,2,3].map(k=>`<div class="optrow"><input type="radio" name="q${i}_correct" value="${k}" ${k==0?'checked':''}><input name="q${i}_opt" placeholder="Option ${'ABCD'[k]}${k<2?' (required)':''}" ${k<2?'required':''} maxlength="80"></div>`).join('')+
+`<label>Time limit (seconds)</label><input type="number" name="q${i}_time" value="20" min="5" max="120">`;document.getElementById('qs').appendChild(d);}addQ();
+</script>{% endblock %}

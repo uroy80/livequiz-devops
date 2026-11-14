@@ -1,0 +1,20 @@
+# Local run of the same stack that Ansible deploys on EC2:  docker compose up --build
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: livequiz
+      POSTGRES_USER: livequiz
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-local-dev-only}
+    volumes: [dbdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U livequiz"], interval: 5s, retries: 10 }
+  app:
+    build: ./app
+    image: livequiz:local
+    environment:
+      DATABASE_URL: postgresql+psycopg://livequiz:${DB_PASSWORD:-local-dev-only}@db:5432/livequiz
+      SECRET_KEY: ${SECRET_KEY:-local-dev-secret}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin-change-me}
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["8200:8000"]
+volumes: { dbdata: {} }

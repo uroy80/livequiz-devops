@@ -1,0 +1,10 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}LiveQuiz{% endblock %}</title><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body><header><a class="logo" href="{{ url_for('index') }}">Live<span>Quiz</span></a>
+<nav>{% if user %}<a href="{{ url_for('dashboard') }}">My quizzes</a><span>{{ user.username }}</span>
+<form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="linkbtn">Log out</button></form>
+{% else %}<a href="{{ url_for('play') }}">Join a game</a><a href="{{ url_for('login') }}">Host login</a>{% endif %}</nav></header>
+<main>{% with msgs = get_flashed_messages() %}{% for m in msgs %}<div class="flash">{{ m }}</div>{% endfor %}{% endwith %}
+{% block body %}{% endblock %}</main>
+<footer>LiveQuiz v{{ version }} · Jenkins build #{{ build }} · commit {{ commit }} · server {{ server }} · Major Project – AWS · Git · Jenkins · Terraform · Ansible · Docker</footer>
+{% block scripts %}{% endblock %}</body></html>

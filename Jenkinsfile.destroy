@@ -1,0 +1,41 @@
+// LiveQuiz – one-click teardown of everything Terraform created in AWS.
+pipeline {
+  agent any
+  options { timestamps(); ansiColor('xterm'); timeout(time: 30, unit: 'MINUTES') }
+  environment {
+    AWS_REGION = 'ap-south-1'
+    TF_IN_AUTOMATION = '1'
+    TF_STATE = '/var/jenkins_home/state/livequiz.tfstate'
+  }
+  stages {
+    stage('Confirm') {
+      steps {
+        script { if (params.CONFIRM != 'destroy') { error('Type "destroy" in CONFIRM to delete the AWS resources.') } }
+      }
+    }
+    stage('Terraform Destroy') {
+      steps {
+        dir('infra/terraform') {
+          sh '''
+            terraform init -input=false -backend-config="path=$TF_STATE"
+            terraform destroy -input=false -auto-approve -var "admin_cidr=0.0.0.0/32"
+            rm -f "$(dirname "$TF_STATE")/admin-password"
+          '''
+        }
+      }
+    }
+    stage('Verify nothing is left') {
+      steps {
+        sh '''
+          echo "Running LiveQuiz instances:"
+          aws ec2 describe-instances --filters Name=tag:Project,Values=LiveQuiz Name=instance-state-name,Values=pending,running,stopping,stopped \
+            --query 'Reservations[].Instances[].InstanceId' --output text
+          echo "LiveQuiz VPCs:"
+          aws ec2 describe-vpcs --filters Name=tag:Project,Values=LiveQuiz --query 'Vpcs[].VpcId' --output text
+          echo "Terraform state resources: $(cd infra/terraform && terraform state list | wc -l)"
+        '''
+      }
+    }
+  }
+  post { success { script { currentBuild.description = 'All AWS resources destroyed' } } }
+}

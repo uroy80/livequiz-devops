@@ -1,0 +1,15 @@
+# Configures the EC2 server created by Terraform and deploys LiveQuiz.
+# Called by Jenkins with: -e image_tag=... -e db_password=... -e admin_password=... -e secret_key=...
+- name: Configure server and deploy LiveQuiz
+  hosts: livequiz
+  become: true
+  gather_facts: false
+  pre_tasks:
+    - name: Wait until the new server accepts SSH
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+    - name: Gather facts
+      ansible.builtin.setup:
+  roles:
+    - docker
+    - livequiz

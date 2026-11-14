@@ -1,0 +1,28 @@
+# Managed by Ansible
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: livequiz
+      POSTGRES_USER: livequiz
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes: [dbdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U livequiz"], interval: 5s, retries: 20 }
+  app:
+    image: ${IMAGE}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://livequiz:${DB_PASSWORD}@db:5432/livequiz
+      SECRET_KEY: ${SECRET_KEY}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["80:8000"]
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: {{ aws_region }}
+        awslogs-group: {{ log_group }}
+        awslogs-stream: app-{{ image_tag }}
+volumes:
+  dbdata: {}

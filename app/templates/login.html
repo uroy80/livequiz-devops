@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block body %}<div class="card" style="max-width:440px;margin:30px auto">
+<h1>{{ 'Host login' if mode=='login' else 'Create host account' }}</h1>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
+<label>Username</label><input name="username" required autocomplete="username"><label>Password</label><input type="password" name="password" required autocomplete="{{ 'current-password' if mode=='login' else 'new-password' }}">
+<button class="btn" style="width:100%">{{ 'Log in' if mode=='login' else 'Create account' }}</button></form>
+<p class="muted">{% if mode=='login' %}New here? <a href="{{ url_for('register') }}">Create an account</a>{% else %}Have an account? <a href="{{ url_for('login') }}">Log in</a>{% endif %}</p></div>{% endblock %}

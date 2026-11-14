@@ -1,0 +1,4 @@
+- name: Restart LiveQuiz
+  ansible.builtin.command: docker compose up -d --force-recreate app
+  args:
+    chdir: /opt/livequiz

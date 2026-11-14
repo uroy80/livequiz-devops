@@ -1,0 +1,56 @@
+- name: Application directory
+  ansible.builtin.file:
+    path: /opt/livequiz
+    state: directory
+    mode: "0750"
+
+- name: Secrets file (only root can read it)
+  ansible.builtin.template:
+    src: env.j2
+    dest: /opt/livequiz/.env
+    mode: "0600"
+  notify: Restart LiveQuiz
+
+- name: Compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/livequiz/docker-compose.yml
+    mode: "0644"
+
+- name: Pull the new image from Amazon ECR
+  ansible.builtin.command: docker compose pull
+  args:
+    chdir: /opt/livequiz
+  register: pull
+  changed_when: "'Pulled' in pull.stderr or 'Downloaded' in pull.stderr"
+
+- name: Start or update the containers (only changed services are recreated)
+  ansible.builtin.command: docker compose up -d --remove-orphans
+  args:
+    chdir: /opt/livequiz
+  register: up
+  changed_when: "'Started' in up.stderr or 'Recreated' in up.stderr or 'Created' in up.stderr"
+
+- name: Wait until LiveQuiz answers on port 80
+  ansible.builtin.uri:
+    url: http://localhost/healthz
+    return_content: true
+  register: health
+  until: health.status == 200 and ('"build":"' ~ build_number ~ '"') in health.content
+  retries: 30
+  delay: 3
+
+- name: Show running containers
+  ansible.builtin.command: docker compose ps
+  args:
+    chdir: /opt/livequiz
+  register: ps
+  changed_when: false
+
+- name: Deployment summary
+  ansible.builtin.debug:
+    msg: "{{ ps.stdout_lines + [health.content] }}"
+
+- name: Remove old images to save disk
+  ansible.builtin.command: docker image prune -af --filter until=24h
+  changed_when: false

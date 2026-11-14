@@ -1,0 +1,22 @@
+- name: Wait for cloud-init to finish (apt lock)
+  ansible.builtin.command: cloud-init status --wait
+  changed_when: false
+
+- name: Install Docker, Compose and the ECR credential helper
+  ansible.builtin.apt:
+    name: [docker.io, docker-compose-v2, amazon-ecr-credential-helper]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Docker uses the instance IAM role to pull from ECR (no passwords stored)
+  ansible.builtin.copy:
+    dest: /root/.docker/config.json
+    mode: "0600"
+    content: '{ "credHelpers": { "{{ ecr_registry }}": "ecr-login" } }'
+
+- name: Docker is running and starts on boot
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true

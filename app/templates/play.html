@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% block title %}Play LiveQuiz{% endblock %}{% block body %}
+<div id="join" class="card" style="max-width:440px;margin:20px auto"><h1>Join game</h1>
+<label>Game PIN</label><input class="pin-input" id="pin" inputmode="numeric" maxlength="6" value="{{ pin }}"><label>Nickname</label><input id="name" maxlength="20" placeholder="Your name">
+<button class="btn alt" style="width:100%" onclick="join()">Join</button><p class="badc" id="err"></p></div>
+<div id="wait" class="card center" style="display:none"><h1 id="wtitle">You're in!</h1><p class="lead" id="wmsg">See your name on the big screen. Waiting for the host to start…</p></div>
+<div id="q" class="card" style="display:none"><div class="row" style="justify-content:space-between"><span class="badge" id="qnum"></span><div class="timer" id="timer"></div></div>
+<div class="qtext" id="qtext" style="font-size:22px"></div><div class="opts" id="opts"></div></div>
+<div id="res" class="card center" style="display:none"><div class="huge" id="rbig"></div><p class="lead" id="rmsg"></p></div>
+{% endblock %}{% block scripts %}<script src="{{ url_for('static', filename='socket.io.min.js') }}"></script><script>
+const s=io(),$=id=>document.getElementById(id);let tick,me='';
+const show=id=>['join','wait','q','res'].forEach(x=>$(x).style.display=x==id?'':'none');
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function join(){me=$('name').value.trim();s.emit('join',{pin:$('pin').value.trim(),name:me},r=>{if(!r.ok){$('err').textContent=r.error;return}
+ $('wtitle').textContent=`You're in, ${me}!`;$('wmsg').textContent=`${r.title} – waiting for the host to start…`;show('wait')})}
+s.on('question',q=>{show('q');$('qnum').textContent=`Question ${q.index+1} of ${q.total}`;$('qtext').textContent=q.text;
+ $('opts').innerHTML=q.options.map((o,i)=>`<button class="opt o${i}" onclick="answer(${i})"><span class="tag">${'ABCD'[i]}</span>${esc(o)}</button>`).join('');
+ let t=q.time_limit;$('timer').textContent=t;clearInterval(tick);tick=setInterval(()=>{t--;$('timer').textContent=Math.max(t,0);if(t<=0)clearInterval(tick)},1000)});
+function answer(i){s.emit('answer',{choice:i},r=>{if(r&&r.ok){document.querySelectorAll('.opt').forEach((b,k)=>{b.disabled=true;if(k!=i)b.classList.add('dim')});
+ $('wtitle').textContent='Answer locked in';$('wmsg').textContent='Waiting for everyone else…';setTimeout(()=>{if($('q').style.display=='')show('wait')},600)}})}
+s.on('your_result',r=>{clearInterval(tick);show('res');$('rbig').innerHTML=!r.answered?'<span class="badc">⏱ Time up</span>':r.correct?`<span class="good">✔ +${r.points}</span>`:'<span class="badc">✘ Wrong</span>';
+ $('rmsg').textContent=`Score ${r.score} · you are #${r.rank} of ${r.of}`});
+s.on('finished',f=>{show('res');$('rbig').textContent=f.rank==1?'🏆 You won!':`#${f.rank} of ${f.of}`;$('rmsg').textContent=`Final score ${f.score}. Thanks for playing!`});
+if($('pin').value)$('name').focus();
+</script>{% endblock %}

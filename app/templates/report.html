@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block body %}<h1>{{ game.quiz.title }}</h1>
+<p class="muted">Game PIN {{ game.pin }} · {{ game.started.strftime('%d %b %Y %H:%M') }} · {{ game.player_count }} players</p>
+<div class="card"><table><tr><th>Rank</th><th>Player</th><th>Score</th><th>Correct answers</th></tr>
+{% for r in game.results %}<tr><td>{{ r.rank }}</td><td><b>{{ r.nickname }}</b></td><td>{{ r.score }}</td><td>{{ r.correct_count }} / {{ game.quiz.questions|length }}</td></tr>{% endfor %}</table></div>
+<a href="{{ url_for('dashboard') }}">← Back</a>{% endblock %}
