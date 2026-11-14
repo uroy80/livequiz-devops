@@ -13,6 +13,6 @@ terraform {
 provider "aws" {
   region = var.region
   default_tags {
-    tags = { Project = "LiveQuiz", ManagedBy = "Terraform", Owner = "Usham Roy (RA2311003011574)" }
+    tags = { Project = "LiveQuiz", ManagedBy = "Terraform", Owner = "Usham Roy RA2311003011574" }
   }
 }
