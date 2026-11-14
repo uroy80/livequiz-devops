@@ -3,7 +3,8 @@ RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* \
  && useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin livequiz
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+ && pip uninstall -y pip setuptools wheel   # not needed at runtime; they carry their own CVEs
 COPY . .
 ARG APP_VERSION=dev
 ARG BUILD_NUMBER=local

@@ -61,6 +61,13 @@ case "${1:-}" in
     ok "Jenkins: $J   user: admin   password: cat .secrets/jenkins-admin-password"
     [ -n "${DEMO_NO_OPEN:-}" ] || open "$J/job/LiveQuiz-Deploy/" ;;
   deploy)  trigger LiveQuiz-Deploy && "$0" url ;;
+  follow)  # stream the newest LiveQuiz-Deploy build (e.g. one started by a git push)
+    n=$(api "$J/job/LiveQuiz-Deploy/lastBuild/api/json" | python3 -c 'import sys,json;print(json.load(sys.stdin)["number"])')
+    start=0; hdr=$(mktemp)
+    while :; do
+      api -D "$hdr" "$J/job/LiveQuiz-Deploy/$n/logText/progressiveText?start=$start" | perl -pe 's/\e\[8mha:\S*?\e\[0m//g' | grep -v '^\[Pipeline\]'
+      start=$(grep -i '^X-Text-Size:' "$hdr" | tr -d '\r' | awk '{print $2}'); grep -qi '^X-More-Data: true' "$hdr" || break; sleep 2
+    done; rm -f "$hdr"; api "$J/job/LiveQuiz-Deploy/$n/api/json" | python3 -c 'import sys,json;print("RESULT:",json.load(sys.stdin)["result"])' ;;
   destroy) trigger LiveQuiz-Destroy CONFIRM=destroy ;;
   url)
     URL=$(docker exec lq-jenkins sh -c 'cd /var/jenkins_home/workspace/LiveQuiz-Deploy/infra/terraform 2>/dev/null && terraform output -raw app_url 2>/dev/null')
