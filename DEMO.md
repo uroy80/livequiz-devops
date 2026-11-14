@@ -1,7 +1,7 @@
 # LiveQuiz – Live Demo Cheat Sheet (Major Project)
 
 ```bash
-cd ~/Desktop/LiveQuiz-Major-Project
+cd ~/Desktop/dev/LiveQuiz-Major-Project
 ```
 
 ## Before the professor arrives (≈5 min)
