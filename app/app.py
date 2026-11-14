@@ -215,7 +215,8 @@ def host_game(pin):
     game = games.get(pin)
     if not game or game.host_id != g.user.id:
         abort(404)
-    join_url = url_for("play", pin=pin, _external=True)
+    base = os.getenv("PUBLIC_URL") or request.host_url
+    join_url = base.rstrip("/") + url_for("play", pin=pin)
     return render_template("host.html", game=game, join_url=join_url, qr=qr_svg(join_url))
 
 
